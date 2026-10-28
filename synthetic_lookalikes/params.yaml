@@ -1,0 +1,92 @@
+# Origin: verification@81ea80da
+# Synthetic look-alike loads, one hour each at 10 ms spacing.
+# Powers in kW. Sources for the training job: the logged Llama-2 70B LoRA
+# fine-tune on 16 H100s used in the power-side report (step 10.1–10.3 s,
+# 5.6–5.8 s high and 4.4–4.6 s low, GPU high level 10.97–11.00 kW, swing
+# 2.32–2.45 kW); the rest of the node is set so the island draws 16 kW at the
+# wall (1 kW/GPU, after Latif et al.). No checkpoint gap:
+# the logs do not document one. Everything else is a plausible appliance
+# model, not a trace.
+
+duration_s: 3600
+volts: 240               # single-phase service; the monitor reads RMS amps
+dt_s: 0.01
+seed: 20261023
+
+spectrogram:
+  window_s: 600
+  stride_s: 300
+  f_min_hz: 0.01
+
+ev_charger:                 # level-2 AC charger, single phase
+  start_s: 300
+  ramp_s: 10
+  level_kw: 7.2
+  taper_start_s: 2700
+  taper_end_kw: 1.5
+  stop_s: 3300
+  noise_kw: 0.02
+  pf: 0.99                  # active PFC front end
+
+heat_pump:                  # single-stage, thermostatic
+  run_kw: 3.5
+  fan_kw: 0.3
+  on_s: 480
+  off_s: 420
+  pf: 0.85
+  locked_rotor_kva: 15.0    # ~62 A LRA at 240 V, single-stage compressor
+  locked_rotor_pf: 0.4
+  surge_tau_s: 0.15
+  noise_kw: 0.03
+
+laser_fuser:                # fuser heater pulsed to hold temperature
+  standby_kw: 0.05
+  motor_kw: 0.15
+  heater_kw: 1.0
+  job_every_s: 600
+  job_len_s: 120
+  pulse_period_s: 0.7
+  duty_warm: 0.5
+  duty_hold: 0.3
+  noise_kw: 0.01
+  motor_pf: 0.7             # heater is resistive (pf 1)
+
+well_pump:                  # 1.5 hp pump, short runs
+  run_kw: 1.1
+  run_len_s: 90
+  every_s: 720
+  pf: 0.8
+  locked_rotor_kva: 10.0    # NEMA code ~7 kVA/hp on 1.5 hp
+  locked_rotor_pf: 0.4
+  surge_tau_s: 0.08
+  noise_kw: 0.01
+
+training_16gpu:             # node + GPUs, square-wave step
+  node_kw: 5.0
+  gpu_high_kw: 11.0
+  swing_kw: 2.4
+  period_s: 10.2
+  low_fraction: 0.44
+  edge_s: 0.05
+  checkpoint_every_s: 1200
+  checkpoint_offset_s: 600
+  checkpoint_len_s: 0          # none documented for the logged job
+  noise_kw: 0.05
+  pf: 0.98                  # server PSUs with PFC
+
+crypto_miner:               # flat, one pool reconnect dip
+  level_kw: 27.0
+  noise_kw: 0.1
+  dip_at_s: 1980
+  dip_len_s: 2
+  dip_kw: 20.0
+  pf: 0.97
+
+inference_server:           # bursty, no fundamental
+  base_kw: 8.0
+  request_rate_hz: 2.0
+  burst_kw: 1.5
+  burst_mean_s: 0.4
+  max_kw: 27.0
+  noise_kw: 0.05
+  pf: 0.98

@@ -1,0 +1,61 @@
+# island_detectability_map — parameters. Provenance tags: [measured] from branch results
+# or this analysis; [memo] a memo comparing DiLoCo's economic floor with the
+# metering floor (origin: verification@f7a9006e);
+# [assumed] no measurement behind it yet.
+origin: verification@f7a9006e
+loads_kw:            # covert load sizes to tabulate
+  - {kw: 27.0,   label: "16-chip island (27 kW grid) [memo]"}
+  - {kw: 100.0,  label: "~60 chips"}
+  - {kw: 300.0,  label: "~180 chips"}
+  - {kw: 1000.0, label: "~590 chips"}
+kw_per_chip: 1.7           # [memo] H100-class, grid side
+mean_shift:
+  tpr: 0.90
+  fpr: 0.01
+  k: 1.2                   # [measured] d'/(P/sigma) backed out of S3 ROC: 0.70-1.39 across four points
+  horizon_days: 30         # [measured] the S3 detector's horizon; no T-scaling is claimed
+balance:
+  e_low: 0.005             # [memo] revenue-grade
+  e_high: 0.02             # [memo] SCADA-grade / transformer monitor ~1.5%
+  kfac: 3.0
+pulse:
+  # Reference changed 2026-10-04 to the held-out, causal-direction figure below (origin: verification@da79341b).
+  # Was: spectral detector, 14.6 kVA swing at 709 kVA, "zero false alarms" read on the same 39 hours
+  # (pulse_measurement.json, sawtooth 10% spread) -- did not hold on new hours: on 202 hours
+  # not used to set them, the old thresholds alarmed in 41-121, because the site's own periodic loads come and go.
+  # Now: edge-count detector, low-passed series, threshold set on the EARLIER half (hours 36-155),
+  # scored on the LATER half (156-276): 0 alarm hours in 121, the causal direction. Read from the row
+  # below at run time, so a re-run on a longer LBNL record picks up the new figure (and raises if that
+  # row now has alarms). m_ref_kva must be recomputed with it: mean of the three-phase sum over the
+  # scored hours, 1-second series (data/upmu/series/mag1.npy).
+  reference:
+    file: heldout_lowpass.json
+    family: maglp
+    detector: edge
+    series: sum
+    rule: "set on A, scored on B"
+    margin: 1.0
+    m_ref_kva: 742.3       # [measured] hours 156-276; hours 36-155: 709.8; whole record 724.2
+    label: "measured, held out: edge count,\nsum, 0 alarms in 121 h"
+  measurement: pulse_measurement.json   # kept for the legacy path and the spectral segment bank; no longer the reference
+  level: swing80_zero_fa_kva
+  signal_model: "sawtooth, 10% spread, rho 0.95"   # [assumed] straggler model (pulse.training_trace); 30% spread is the sensitivity case
+  depth: [0.1, 0.3]        # [assumed] swing / island power. Not measured for a 16-GPU node.
+  beta: [0.5, 1.0]         # [assumed] background amplitude ~ M^beta
+  t_hours: [1.0, 720.0]    # 1 h [measured]; 30 d by T^(-1/4) [assumed]
+tiers_kw:                  # [memo] throughput bands
+  service transformer: [50, 500]
+  feeder: [1000, 20000]
+  distribution substation: [10000, 100000]
+axes: {m_min: 10, m_max: 100000, p_min: 5, p_max: 20000}
+observed_pulse:            # what has been reported for real training loads (large synchronized clusters)
+  cadence_hz: [0.02, 3.0]  # [reported] Choukse et al. arXiv 2508.14318: drops "once per second or less, to once every
+                           #   tens of seconds", FFT energy at 0.2-3 Hz for a DGX-H100 job; arXiv 2512.08076: measured
+                           #   GPU trace, dominant cycle ~0.05 Hz; NASPI/PNNL webinar Q&A 2026-03-18: 0.1-1 Hz, with
+                           #   faster content at 5-59 Hz inside the high phase; Uptime Institute: every second or two.
+  depth_unsmoothed: [0.4, 0.5]   # [derived] GPU near TDP <-> near idle (Choukse), GPUs > 50% of server power
+  depth_vendor_smoothed: 0.1     # [derived] GB200 power floor max 90% of TDP, peak min 1.1x => >= 20% of GPU TDP
+                                 #   still swings (Choukse IV-B) ~ 10% of node power; costs 10.5% energy at a 90% floor
+  island_caveat: >-
+    All of the above are large clusters, where the low phase is cross-node communication. Nothing reported
+    for a 16-chip island; its depth may be smaller. Unmeasured.

@@ -1,0 +1,21 @@
+[project]
+name = "power-side-detection"
+version = "0.1.0"
+description = "Code behind the power-side detection report: measured GPU training power added to measured grid records, and detectors scored on the result."
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "matplotlib",
+    "pyyaml",
+    "requests",
+]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
